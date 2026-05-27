@@ -1,0 +1,163 @@
+#ifndef RI_RENDERER_H
+#define RI_RENDERER_H
+
+#include "ri_platform/ri_platform.h"
+#include <stdint.h>
+#include <vulkan/vulkan.h>
+#include <vulkan/vulkan_core.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+// #define RUIN_ENABLE_DEBUG
+
+#ifdef RUIN_ENABLE_DEBUG
+    #define enable_validation 1
+#else
+    #define enable_validation 0
+#endif
+
+
+#define DEFAULT_MULTISAMPLING VK_SAMPLE_COUNT_1_BIT
+#define MAX_SWAPCHAIN_IMAGES 8
+#define MAX_FRAMES_IN_FLIGHT 2
+
+
+typedef struct {
+    uint32_t graphics_family;
+    uint32_t present_family;
+} QueueFamilyIndices;
+
+typedef struct {
+    VkSurfaceCapabilitiesKHR capabilities;
+    VkSurfaceFormatKHR      *formats;
+    VkPresentModeKHR        *present_modes;
+    uint32_t                 format_count;
+    uint32_t                 present_mode_count;
+} SwapchainSupportDetails;
+
+typedef struct {
+    void    *code;
+    uint32_t len;
+} Text;
+
+
+typedef struct {
+    VkInstance               instance;
+    VkDebugUtilsMessengerEXT messenger;
+    VkSurfaceKHR             surface;
+    VkPhysicalDevice         physical_device;
+    VkDevice                 device;
+    VkQueue                  graphics_queue;
+    VkQueue                  present_queue;
+    // VmaAllocator             allocator;
+} RI_Renderer_Core;
+
+typedef struct {
+    VkSwapchainKHR swapchain;
+    VkFormat       swapchain_image_format;
+    VkExtent2D     swapchain_extent;
+    VkImage       *swapchain_images;
+    VkImageView   *swapchain_image_views;
+    VkFramebuffer *swapchain_framebuffers;
+    uint32_t       swapchain_image_count;
+} RI_Renderer_Swapchain;
+
+typedef struct {
+    VkRenderPass shadow_pass;
+    VkRenderPass geometry_pass;
+    VkRenderPass present_pass;
+} RI_Renderer_RenderPasses;
+
+typedef struct {
+    VkPipeline            pipeline;
+    VkPipelineLayout      layout;
+    VkDescriptorSetLayout descriptor;
+    VkPipelineBindPoint   bind_point;
+} RI_Renderer_Pipeline;
+
+typedef struct {
+    RI_Renderer_Pipeline test_pipeline;
+} RI_Renderer_Pipelines;
+
+typedef struct {
+    VkCommandPool   command_pool;
+    VkCommandBuffer command_buffers[MAX_FRAMES_IN_FLIGHT];
+} RI_Renderer_Commands;
+
+typedef struct {
+    VkSemaphore image_available_semaphores[MAX_FRAMES_IN_FLIGHT];
+    VkSemaphore render_finished_semaphores[MAX_SWAPCHAIN_IMAGES];
+    VkFence     in_flight_fences[MAX_FRAMES_IN_FLIGHT];
+    uint32_t    current_frame;
+} RI_Renderer_Sync;
+
+typedef struct {
+    RI_Renderer_Core         core;
+    RI_Renderer_Swapchain    swapchain;
+    RI_Renderer_RenderPasses renderpasses;
+    RI_Renderer_Pipelines    pipelines;
+    RI_Renderer_Commands     commands;
+    RI_Renderer_Sync         sync;
+} RI_Renderer;
+
+
+
+QueueFamilyIndices find_queue_family_indices(RI_Renderer_Core *c);
+SwapchainSupportDetails query_swapchain_support(RI_Renderer *r);
+VkSurfaceFormatKHR choose_swap_surface_format(VkSurfaceFormatKHR *formats, uint32_t count);
+VkPresentModeKHR choose_swap_present_mode(VkPresentModeKHR *mods, uint32_t count);
+VkExtent2D choose_swap_extent(VkSurfaceCapabilitiesKHR *caps, RI_Platform *p);
+
+void create_memory_allocator(RI_Renderer *r);
+
+Text read_file(const char *path);
+
+VkShaderModule create_shader_module(Text *txt, RI_Renderer *r);
+
+
+
+void ri_renderer_create_instance(RI_Renderer *r);
+void ri_renderer_create_debug_messenger(RI_Renderer *r);
+void ri_renderer_create_surface(RI_Renderer *r, RI_Platform *p);
+void ri_renderer_select_physical_device(RI_Renderer *r);
+void ri_renderer_create_logical_device(RI_Renderer *r);
+
+
+void ri_renderer_init(RI_Renderer *r, RI_Platform *p);
+
+
+void ri_renderer_create_swapchain(RI_Renderer *r, RI_Platform *p);
+void ri_renderer_get_swapchain_image_views(RI_Renderer *r);
+
+
+void ri_renderer_create_renderpass_present(RI_Renderer *r);
+
+
+void ri_renderer_create_swapchain_framebuffers(RI_Renderer *r);
+
+
+void ri_renderer_create_commands(RI_Renderer *r);
+
+
+void ri_renderer_create_sync_objects(RI_Renderer *r);
+
+
+void ri_renderer_recreate_swapchain(RI_Renderer *r, RI_Platform *p);
+
+
+void record_command(RI_Renderer *r, VkCommandBuffer cmd, uint32_t img_idx);
+void draw_frame(RI_Renderer *r, RI_Platform *p);
+
+
+void ri_renderer_create_pipeline_test(RI_Renderer *r);
+
+void ri__renderer_kill(RI_Renderer *r);
+
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif
